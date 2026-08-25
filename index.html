@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Portal</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #f4f6f8; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .card { background: #ffffff; padding: 28px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); max-width: 480px; width: 100%; }
+    h2 { margin-top: 0; color: #1a1a1a; font-size: 1.4rem; text-align: center; }
+    p.subtitle { color: #666; font-size: 0.88rem; text-align: center; margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; color: #333; }
+    input[type="text"], input[type="email"], input[type="file"] { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
+    input[type="file"] { background: #fafafa; cursor: pointer; }
+    button { width: 100%; background-color: #0066cc; color: white; border: none; padding: 12px; font-size: 1rem; font-weight: 600; border-radius: 6px; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
+    button:hover { background-color: #0052a3; }
+    button:disabled { background-color: #a0c4e8; cursor: not-allowed; }
+    #status { margin-top: 16px; padding: 12px; border-radius: 6px; font-size: 0.9rem; display: none; text-align: center; }
+    .status-success { background-color: #e6f4ea; color: #137333; }
+    .status-error { background-color: #fce8e6; color: #c5221f; }
+    #generatorSection { display: none; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px dashed #eee; }
+    #output { margin-top: 15px; padding: 12px; background: #fafafa; border: 1px solid #ddd; border-radius: 6px; display: none; word-break: break-all; }
+    .copy-btn { background-color: #34a853; margin-top: 8px; }
+    .copy-btn:hover { background-color: #2d8e47; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <!-- EMPLOYEE LINK GENERATOR MODE -->
+    <div id="generatorSection">
+      <h2>Employee Link Generator</h2>
+      <p class="subtitle">Generate a pre-filled document upload link for your client.</p>
+      
+      <div class="form-group">
+        <label for="empEmailInput">Your Employee Email</label>
+        <input type="email" id="empEmailInput" placeholder="employee@company.com">
+      </div>
+      <div class="form-group">
+        <label for="clientFirstGen">Client First Name</label>
+        <input type="text" id="clientFirstGen" placeholder="Jane">
+      </div>
+      <div class="form-group">
+        <label for="clientLastGen">Client Last Name</label>
+        <input type="text" id="clientLastGen" placeholder="Doe">
+      </div>
+      <button onclick="generateLink()">Generate Link</button>
+
+      <div id="output">
+        <label>Shareable Client Link:</label>
+        <input type="text" id="generatedUrl" readonly style="margin-top: 6px;">
+        <button class="copy-btn" onclick="copyLink()">Copy Link</button>
+      </div>
+    </div>
+
+    <!-- CLIENT UPLOAD FORM MODE -->
+    <div id="uploadSection">
+      <h2>Document Portal</h2>
+      <p class="subtitle">Attach your documents or photos below to send them to your contact.</p>
+
+      <form id="uploadForm">
+        <div class="form-group">
+          <label for="firstName">First Name</label>
+          <input type="text" id="firstName" required placeholder="John">
+        </div>
+
+        <div class="form-group">
+          <label for="lastName">Last Name</label>
+          <input type="text" id="lastName" required placeholder="Smith">
+        </div>
+
+        <div class="form-group">
+          <label for="fileInput">Select File(s) / Photo(s)</label>
+          <input type="file" id="fileInput" accept="image/*,.pdf" multiple required>
+        </div>
+
+        <button type="submit" id="submitBtn">Send Documents</button>
+      </form>
+
+      <div id="status"></div>
+    </div>
+  </div>
+
+  <script>
+    // PASTE YOUR APPS SCRIPT WEB APP URL HERE:
+    const SCRIPT_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramFirst = urlParams.get('firstName') || '';
+    const paramLast = urlParams.get('lastName') || '';
+    const paramEmpEmail = urlParams.get('empEmail') || '';
+
+    // If URL has no parameters, show Employee Link Generator mode
+    if (!paramFirst && !paramLast) {
+      document.getElementById('generatorSection').style.display = 'block';
+      const savedEmail = localStorage.getItem('portal_emp_email');
+      if (savedEmail) document.getElementById('empEmailInput').value = savedEmail;
+    } else {
+      // Pre-fill fields for client
+      document.getElementById('firstName').value = paramFirst;
+      document.getElementById('lastName').value = paramLast;
+    }
+
+    function generateLink() {
+      const email = document.getElementById('empEmailInput').value.trim();
+      const first = document.getElementById('clientFirstGen').value.trim();
+      const last = document.getElementById('clientLastGen').value.trim();
+
+      if (!email || !first || !last) {
+        alert('Please fill out all fields.');
+        return;
+      }
+
+      localStorage.setItem('portal_emp_email', email);
+      const cleanBaseUrl = window.location.href.split('?')[0];
+      const link = `${cleanBaseUrl}?firstName=${encodeURIComponent(first)}&lastName=${encodeURIComponent(last)}&empEmail=${encodeURIComponent(email)}`;
+      
+      document.getElementById('generatedUrl').value = link;
+      document.getElementById('output').style.display = 'block';
+    }
+
+    function copyLink() {
+      const copyInput = document.getElementById("generatedUrl");
+      copyInput.select();
+      document.execCommand("copy");
+      alert("Link copied to clipboard!");
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const submitBtn = document.getElementById('submitBtn');
+      const statusDiv = document.getElementById('status');
+      const files = document.getElementById('fileInput').files;
+      const firstName = document.getElementById('firstName').value;
+      const lastName = document.getElementById('lastName').value;
+      const empEmail = paramEmpEmail;
+
+      if (!files.length) return;
+
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Preparing files...';
+      statusDiv.style.display = 'block';
+      statusDiv.style.backgroundColor = '#f1f3f4';
+      statusDiv.style.color = '#333';
+      statusDiv.innerText = 'Processing documents...';
+
+      const filePromises = Array.from(files).map(file => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve({ fileName: file.name, fileData: e.target.result });
+          reader.onerror = err => reject(err);
+          reader.readAsDataURL(file);
+        });
+      });
+
+      try {
+        const filePayloads = await Promise.all(filePromises);
+        submitBtn.innerText = 'Sending documents...';
+
+        const payload = {
+          firstName: firstName,
+          lastName: lastName,
+          empEmail: empEmail,
+          files: filePayloads
+        };
+
+        // Post directly to Apps Script API
+        const response = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          mode: 'cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+
+        const res = await response.json();
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Send Documents';
+
+        if (res.success) {
+          statusDiv.className = 'status-success';
+          statusDiv.innerText = res.message;
+          document.getElementById('uploadForm').reset();
+        } else {
+          statusDiv.className = 'status-error';
+          statusDiv.innerText = 'Error: ' + res.message;
+        }
+
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Send Documents';
+        statusDiv.className = 'status-error';
+        statusDiv.innerText = 'Error sending documents. Please try again.';
+      }
+    });
+  </script>
+</body>
+</html>
