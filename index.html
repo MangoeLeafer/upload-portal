@@ -20,7 +20,11 @@
     #status { margin-top: 16px; padding: 12px; border-radius: 6px; font-size: 0.9rem; display: none; text-align: center; }
     .status-success { background-color: #e6f4ea; color: #137333; }
     .status-error { background-color: #fce8e6; color: #c5221f; }
-    #generatorSection { display: none; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px dashed #eee; }
+    
+    /* View Containers */
+    #generatorSection { display: none; }
+    #uploadSection { display: none; }
+    
     #output { margin-top: 15px; padding: 12px; background: #fafafa; border: 1px solid #ddd; border-radius: 6px; display: none; word-break: break-all; }
     .copy-btn { background-color: #34a853; margin-top: 8px; }
     .copy-btn:hover { background-color: #2d8e47; }
@@ -29,7 +33,7 @@
 <body>
 
   <div class="card">
-    <!-- EMPLOYEE LINK GENERATOR MODE -->
+    <!-- VIEW 1: EMPLOYEE LINK GENERATOR MODE ONLY -->
     <div id="generatorSection">
       <h2>Employee Link Generator</h2>
       <p class="subtitle">Generate a pre-filled document upload link for your client.</p>
@@ -55,7 +59,7 @@
       </div>
     </div>
 
-    <!-- CLIENT UPLOAD FORM MODE -->
+    <!-- VIEW 2: CLIENT UPLOAD FORM MODE ONLY -->
     <div id="uploadSection">
       <h2>Document Portal</h2>
       <p class="subtitle">Attach your documents or photos below to send them to your contact.</p>
@@ -84,7 +88,7 @@
   </div>
 
   <script>
-    // PASTE YOUR APPS SCRIPT WEB APP URL HERE:
+    // PASTE YOUR FULL APPS SCRIPT WEB APP URL HERE (WITH https://):
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbysQbvCXlAiCNvHhonP0ol4mgQPTO5SRWVX4w9LVuDGSqpfrRyxQMgjkakzeQv_oH_p/exec";
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -92,12 +96,19 @@
     const paramLast = urlParams.get('lastName') || '';
     const paramEmpEmail = urlParams.get('empEmail') || '';
 
-    // If URL has no client parameters, show Employee Link Generator mode
+    // STRICT VIEW ROUTING:
+    // If NO client parameters exist, show ONLY the Generator
     if (!paramFirst && !paramLast) {
       document.getElementById('generatorSection').style.display = 'block';
+      document.getElementById('uploadSection').style.display = 'none';
+
       const savedEmail = localStorage.getItem('portal_emp_email');
       if (savedEmail) document.getElementById('empEmailInput').value = savedEmail;
     } else {
+      // If client parameters DO exist, show ONLY the Upload Portal
+      document.getElementById('uploadSection').style.display = 'block';
+      document.getElementById('generatorSection').style.display = 'none';
+
       // Pre-fill client details
       document.getElementById('firstName').value = paramFirst;
       document.getElementById('lastName').value = paramLast;
@@ -167,7 +178,7 @@
           files: filePayloads
         };
 
-        // Bypass browser CORS redirect blocking
+        // Post to Google Apps Script API
         await fetch(SCRIPT_URL, {
           method: 'POST',
           mode: 'no-cors',
@@ -175,7 +186,6 @@
           body: JSON.stringify(payload)
         });
 
-        // Show success state directly
         submitBtn.disabled = false;
         submitBtn.innerText = 'Send Documents';
         statusDiv.className = 'status-success';
