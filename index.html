@@ -50,12 +50,12 @@
         <label for="clientLastGen">Client Last Name</label>
         <input type="text" id="clientLastGen" placeholder="Doe">
       </div>
-      <button onclick="generateLink()">Generate Link</button>
+      <button id="genBtn" onclick="generateLink()">Generate Link</button>
 
       <div id="output">
-        <label>Shareable Client Link:</label>
+        <label>Shareable Short Link:</label>
         <input type="text" id="generatedUrl" readonly style="margin-top: 6px;">
-        <button class="copy-btn" onclick="copyLink()">Copy Link</button>
+        <button class="copy-btn" onclick="copyLink()">Copy Short Link</button>
       </div>
     </div>
 
@@ -89,7 +89,7 @@
 
   <script>
     // PASTE YOUR FULL APPS SCRIPT WEB APP URL HERE (WITH https://):
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbysQbvCXlAiCNvHhonP0ol4mgQPTO5SRWVX4w9LVuDGSqpfrRyxQMgjkakzeQv_oH_p/exec";
+    const SCRIPT_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
 
     const urlParams = new URLSearchParams(window.location.search);
     const paramFirst = urlParams.get('firstName') || '';
@@ -97,7 +97,6 @@
     const paramEmpEmail = urlParams.get('empEmail') || '';
 
     // STRICT VIEW ROUTING:
-    // If NO client parameters exist, show ONLY the Generator
     if (!paramFirst && !paramLast) {
       document.getElementById('generatorSection').style.display = 'block';
       document.getElementById('uploadSection').style.display = 'none';
@@ -105,31 +104,51 @@
       const savedEmail = localStorage.getItem('portal_emp_email');
       if (savedEmail) document.getElementById('empEmailInput').value = savedEmail;
     } else {
-      // If client parameters DO exist, show ONLY the Upload Portal
       document.getElementById('uploadSection').style.display = 'block';
       document.getElementById('generatorSection').style.display = 'none';
 
-      // Pre-fill client details
       document.getElementById('firstName').value = paramFirst;
       document.getElementById('lastName').value = paramLast;
     }
 
-    function generateLink() {
+    async function generateLink() {
       const email = document.getElementById('empEmailInput').value.trim();
       const first = document.getElementById('clientFirstGen').value.trim();
       const last = document.getElementById('clientLastGen').value.trim();
+      const genBtn = document.getElementById('genBtn');
+      const outputDiv = document.getElementById('output');
 
       if (!email || !first || !last) {
         alert('Please fill out all fields.');
         return;
       }
 
+      genBtn.disabled = true;
+      genBtn.innerText = 'Shortening Link...';
+
       localStorage.setItem('portal_emp_email', email);
       const cleanBaseUrl = window.location.href.split('?')[0];
-      const link = `${cleanBaseUrl}?firstName=${encodeURIComponent(first)}&lastName=${encodeURIComponent(last)}&empEmail=${encodeURIComponent(email)}`;
+      const longUrl = `${cleanBaseUrl}?firstName=${encodeURIComponent(first)}&lastName=${encodeURIComponent(last)}&empEmail=${encodeURIComponent(email)}`;
       
-      document.getElementById('generatedUrl').value = link;
-      document.getElementById('output').style.display = 'block';
+      try {
+        // Fetch tinyurl via public API endpoint
+        const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+        
+        if (response.ok) {
+          const shortUrl = await response.text();
+          document.getElementById('generatedUrl').value = shortUrl;
+        } else {
+          // Fallback to long URL if TinyURL service is unreachable
+          document.getElementById('generatedUrl').value = longUrl;
+        }
+      } catch (err) {
+        // Fallback to long URL on network error
+        document.getElementById('generatedUrl').value = longUrl;
+      }
+
+      genBtn.disabled = false;
+      genBtn.innerText = 'Generate Link';
+      outputDiv.style.display = 'block';
     }
 
     function copyLink() {
@@ -178,7 +197,6 @@
           files: filePayloads
         };
 
-        // Post to Google Apps Script API
         await fetch(SCRIPT_URL, {
           method: 'POST',
           mode: 'no-cors',
